@@ -158,7 +158,8 @@ class SingleSrcPMSQE(nn.Module):
         pmsqe = torch.sum(pmsqe_frame, dim=dims) / pad_mask.sum(dims)
         return pmsqe
 
-    def magnitude_at_sll(self, spectra, pad_mask):
+    def magnitude_at_sll(self, spectra, pad_mask, correction = 10000000.0):
+        # Mapping to Eq. (10) in [1].
         # Apply padding and SLL masking
         masked_spectra = spectra * pad_mask * self.mask_sll
         # Compute mean over frequency
@@ -168,7 +169,7 @@ class SingleSrcPMSQE(nn.Module):
         seq_len = torch.sum(pad_mask, dim=-2, keepdim=True)
         mean_pow = sum_spectra / seq_len
         # Compute final SLL spectra
-        return 10000000.0 * spectra / mean_pow
+        return correction * spectra / mean_pow
 
     def bark_computation(self, spectra):
         return self.Sp * torch.matmul(spectra, self.bark_matrix)
