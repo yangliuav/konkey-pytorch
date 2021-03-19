@@ -2,10 +2,11 @@ Konkey is a pytorch-based audio echo canceller (AEC) toolkit that boost developm
 
 # To-Do
 - Loss 
-    - [] mse
+    - [X] mse
     - [] pmseq
     - [] sdr
     - [] stoi
 - Evaluation metric
     - [] PSEQ
     - [] ERLE
+- [] test
