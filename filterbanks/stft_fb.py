@@ -1,10 +1,11 @@
 import torch
 import numpy as np
-from .enc_dec import Filterbank
+from filterbanks.enc_dec import Filterbank
 
 
 class STFTFB(Filterbank):
     """STFT filterbank.
+
     Args:
         n_filters (int): Number of filters. Determines the length of the STFT
             filters before windowing.
@@ -15,6 +16,7 @@ class STFTFB(Filterbank):
             ``np.sqrt(np.hanning())``.
         sample_rate (float): Sample rate of the expected audio.
             Defaults to 8000.
+
     Attributes:
         n_feats_out (int): Number of output filters.
     """
@@ -30,7 +32,7 @@ class STFTFB(Filterbank):
         self.n_feats_out = 2 * self.cutoff
 
         if window is None:
-            self.window = np.hanning(kernel_size + 1)[:-1] ** 0.5
+            self.window = np.hanning(kernel_size + 1)[:-1] ** 0.5 ## ??
         else:
             if isinstance(window, torch.Tensor):
                 window = window.data.numpy()
@@ -52,8 +54,8 @@ class STFTFB(Filterbank):
             [np.real(filters[: self.cutoff, indexes]), np.imag(filters[: self.cutoff, indexes])]
         )
 
-        filters[0, :] /= np.sqrt(2)
-        filters[n_filters // 2, :] /= np.sqrt(2)
+        filters[0, :] /= np.sqrt(2) # ??
+        filters[n_filters // 2, :] /= np.sqrt(2) ## ??
         filters = torch.from_numpy(filters * self.window).unsqueeze(1).float()
         self.register_buffer("_filters", filters)
         self.register_buffer("torch_window", torch.from_numpy(self.window).float())
@@ -77,9 +79,11 @@ class STFTFB(Filterbank):
 def perfect_synthesis_window(analysis_window, hop_size):
     """Computes a window for perfect synthesis given an analysis window and
         a hop size.
+
     Args:
         analysis_window (np.array): Analysis window of the transform.
         hop_size (int): Hop size in number of samples.
+
     Returns:
         np.array : the synthesis window to use for perfectly inverting the STFT.
     """
