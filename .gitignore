@@ -125,3 +125,6 @@ dmypy.json
 .pyre/
 
 playground.py
+/.vscode
+.vscode
+.json
