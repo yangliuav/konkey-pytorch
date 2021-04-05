@@ -128,3 +128,4 @@ playground.py
 /.vscode
 .vscode
 .json
+.vscode/settings.json
