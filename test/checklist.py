@@ -14,8 +14,8 @@ from scipy import signal
 
 if __name__ == "__main__": 
     ref = torch.range(1, 16000)
-    test = torch.stft(ref,  n_fft = 320)
-    test = torch.istft(test,  n_fft = 320)
+    test1 = torch.stft(ref,  n_fft = 320)
+    test = torch.istft(test1,  n_fft = 320)
     result0 = torch.sum((ref - test) ** 2)
 
     f, t, Zxx = signal.stft(ref, fs=16000)
