@@ -1,10 +1,9 @@
 import torch 
-
+from dsp.notch_filter import notch_filter
 
 class DropFreq(torch.nn.Module):
     """This class drops a random frequency from the signal.
-    The purpose of this class is to teach models to learn to rely on all parts
-    of the signal, not just a few frequency bands.
+    The purpose of this class is to teach models to learn to rely on all parts of the signal, not just a few frequency bands.
     Arguments
     ---------
     drop_freq_low : float
@@ -53,10 +52,10 @@ class DropFreq(torch.nn.Module):
         Arguments
         ---------
         waveforms : tensor
-            Shape should be `[batch, time]` or `[batch, time, channels]`.
+            Shape should be `[batch, time]` or `[batch, channels, time]`.
         Returns
         -------
-        Tensor of shape `[batch, time]` or `[batch, time, channels]`.
+        Tensor of shape `[batch, time]` or `[batch, channels, time]`.
         """
 
         # Don't drop (return early) 1-`drop_prob` portion of the batches
@@ -66,7 +65,7 @@ class DropFreq(torch.nn.Module):
 
         # Add channels dimension
         if len(waveforms.shape) == 2:
-            dropped_waveform = dropped_waveform.unsqueeze(-1)
+            dropped_waveform = dropped_waveform.unsqueeze(1)
 
         # Pick number of frequencies to drop
         drop_count = torch.randint(
@@ -98,4 +97,4 @@ class DropFreq(torch.nn.Module):
         dropped_waveform = convolve1d(dropped_waveform, drop_filter, pad)
 
         # Remove channels dimension if added
-        return dropped_waveform.squeeze(-1)
+        return dropped_waveform.squeeze(1)
