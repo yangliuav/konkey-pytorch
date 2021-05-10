@@ -2,7 +2,7 @@ import torch
 from torch.optim.optimizer import Optimizer
 import pytorch_lightning as pl
 
-from ..losses import SinkPITLossWrapper
+from losses import SinkPITLossWrapper
 
 
 class BaseScheduler(object):

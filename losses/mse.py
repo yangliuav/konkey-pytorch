@@ -84,3 +84,39 @@ def MSE(est_targets, targets):
     loss = (targets - est_targets) ** 2
     mean_over = list(range(1, loss.ndim))
     return loss.mean(dim=mean_over)
+
+class PairwiseMSE(_Loss):
+    r"""Measure pairwise mean square error on a batch.
+
+    Shape:
+        - est_targets : :math:`(batch, nsrc, ...)`.
+        - targets: :math:`(batch, nsrc, ...)`.
+
+    Returns:
+        :class:`torch.Tensor`: with shape :math:`(batch, nsrc, nsrc)`
+
+    Examples
+        >>> import torch
+        >>> from asteroid.losses import PITLossWrapper
+        >>> targets = torch.randn(10, 2, 32000)
+        >>> est_targets = torch.randn(10, 2, 32000)
+        >>> loss_func = PITLossWrapper(PairwiseMSE(), pit_from='pairwise')
+        >>> loss = loss_func(est_targets, targets)
+    """
+
+    def forward(self, est_targets, targets):
+        if targets.size() != est_targets.size() or targets.ndim < 3:
+            raise TypeError(
+                f"Inputs must be of shape [batch, n_src, *], got {targets.size()} and {est_targets.size()} instead"
+            )
+        targets = targets.unsqueeze(1)
+        est_targets = est_targets.unsqueeze(2)
+        pw_loss = (targets - est_targets) ** 2
+        # Need to return [batch, nsrc, nsrc]
+        mean_over = list(range(3, pw_loss.ndim))
+        return pw_loss.mean(dim=mean_over)
+        
+MultiSrcMSE = SingleSrcMSE
+pairwise_mse = PairwiseMSE()
+singlesrc_mse = SingleSrcMSE()
+multisrc_mse = MultiSrcMSE()

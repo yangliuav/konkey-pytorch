@@ -1,8 +1,12 @@
 import os
 import argparse
 import json
+import sys
+import shutil
+import inspect
+from datetime import date
 # import comet_ml
-from hyperpyyaml import load_hyperpyyaml
+from hyperpyyaml import load_hyperpyyaml, resolve_references
 
 import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -16,10 +20,13 @@ from engine.system import System
 from engine.schedulers import DPTNetScheduler 
 from losses import PITLossWrapper, pairwise_neg_sisdr
 
-from src.data import make_dataloaders
-from src.engine.system import GeneralSystem
-from src.losses.multi_task_wrapper import MultiTaskLossWrapper
-from src.models import *
+from data import make_dataloaders
+from engine.system import GeneralSystem
+from losses.multi_task_wrapper import MultiTaskLossWrapper
+from models import *
+
+from utils.sb_utils import if_main_process
+
 
 def _convert_to_yaml(overrides):
     """Convert args to yaml for overrides"""
@@ -42,7 +49,7 @@ def create_experiment_directory(
     experiment_directory,
     hyperparams_to_save=None,
     overrides={},
-    log_config=DEFAULT_LOG_CONFIG,
+    log_config="",
     save_env_desc=True,
 ):
     """Create the output folder and relevant experimental files.
@@ -62,9 +69,13 @@ def create_experiment_directory(
         If True, an environment state description is saved to the experiment
         directory, in a file called env.log in the experiment directory.
     """
+    if log_config == "":
+        log_config = os.path.dirname(os.path.abspath(__file__))
+        log_config = os.path.join(log_config, "log-config.yaml")
+
     try:
         # all writing command must be done with the main_process
-        if sb.utils.distributed.if_main_process():
+        if if_main_process():
             if not os.path.isdir(experiment_directory):
                 os.makedirs(experiment_directory)
 
@@ -92,23 +103,24 @@ def create_experiment_directory(
             logger_overrides = {
                 "handlers": {"file_handler": {"filename": log_file}}
             }
-            sb.utils.logger.setup_logging(log_config, logger_overrides)
-            sys.excepthook = _logging_excepthook
+            # sb.utils.logger.setup_logging(log_config, logger_overrides)
+            # sys.excepthook = _logging_excepthook
 
-            # Log beginning of experiment!
-            logger.info("Beginning experiment!")
-            logger.info(f"Experiment folder: {experiment_directory}")
+            # # Log beginning of experiment!
+            # logger.info("Beginning experiment!")
+            # logger.info(f"Experiment folder: {experiment_directory}")
 
             # Save system description:
-            if save_env_desc:
-                description_str = sb.utils.logger.get_environment_description()
-                with open(
-                    os.path.join(experiment_directory, "env.log"), "w"
-                ) as fo:
-                    fo.write(description_str)
+            # if save_env_desc:
+            #     description_str = sb.utils.logger.get_environment_description()
+            #     with open(
+            #         os.path.join(experiment_directory, "env.log"), "w"
+            #     ) as fo:
+            #         fo.write(description_str)
     finally:
         # wait for main_process if ddp is used
-        sb.utils.distributed.ddp_barrier()
+        # sb.utils.distributed.ddp_barrier()
+        pass
 
 def dynamic_mix(file1, file2):
     audio1, fs = torchaudio.load(file1)
@@ -354,20 +366,15 @@ def parse_arguments(arg_list):
     parser = argparse.ArgumentParser(description = "Run a experiment")
     
     parser.add_argument("param_file", type = str, help="A yaml-formatted file using the extended YAML syntax defined by SpeechBrain")
-    
     parser.add_argument("--debug", default=False, action ="store_true", help = "Run the experiment with only a few batches for all datasets, to ensure code runs without crashing.")
-
     parser.add_argument("--noprogressbar", default=False,action="store_true", help="This flag disables the data loop progressbars.")
     
     # parser.add_argument("--log_config", type=str, help="A file storing the configuration options for logging")
   
-    # parser.add_argument("--local_rank", type=int, help="Rank on local machine")
-
-
-
-    # parser.add_argument("--device", type=str, default="cuda:0", help="The device to run the experiment on (e.g. 'cuda:0')")
-    # parser.add_argument("--data_parallel_count", type=int, default=-1,help="Number of devices that are used for data_parallel computation")
-    #parser.add_argument( "--data_parallel_backend", default=False,action="store_true", help="This flag enables training with data_parallel.")
+    parser.add_argument("--local_rank", type=int, help="Rank on local machine")
+    parser.add_argument("--device", type=str, default="cuda:0", help="The device to run the experiment on (e.g. 'cuda:0')")
+    parser.add_argument("--data_parallel_count", type=int, default=-1,help="Number of devices that are used for data_parallel computation")
+    parser.add_argument( "--data_parallel_backend", default=False,action="store_true", help="This flag enables training with data_parallel.")
 
     # parser.add_argument("--distributed_launch", default=False,action="store_true", help="This flag enables training with DDP. Assumes script run with `torch.distributed.launch`")    )
     # parser.add_argument("--distributed_backend", type=str, default="nccl", help="One of {nccl, gloo, mpi}")
@@ -423,13 +430,14 @@ def parse_arguments(arg_list):
     if local_rank is not None and "cuda" in run_opts["device"]:
         run_opts["device"] = run_opts["device"][:-1] + str(local_rank)
 
-    with open(hparams_file) as fin:
+    with open(param_file) as fin:
         hparams = load_hyperpyyaml(fin, overrides)
 
     return param_file, run_opts, overrides, hparams
 
 
 def trainer(conf):
+    pl.seed_everything(conf["seed"])
     train_enh_dir = conf["main_args"].get("train_enh_dir", None)
     resume_ckpt = conf["main_args"].get("resume_ckpt", None)
 
@@ -519,9 +527,10 @@ def trainer(conf):
 
 # https://colab.research.google.com/github/wandb/examples/blob/master/colabs/pytorch-lightning/Supercharge_your_Training_with_Pytorch_Lightning_%2B_Weights_%26_Biases.ipynb#scrollTo=A-N4UcuSD6Tx
 if __name__ == "__main__":
-    # pl.seed_everything(100)
-    sys.argv[1:] = ['hyperparams.yaml', '--device', 'cuda:1', '--seed', '10']
+    
+    sys.argv[1:] = ['./hparams/sepformer.yaml', '--device', 'cuda:1']
     hparams_file, run_opts, overrides, hparams = parse_arguments(sys.argv[1:])
 
     create_experiment_directory(experiment_directory=hparams["output_folder"], hyperparams_to_save=hparams_file, overrides=overrides)
 
+    trainer(hparams)
