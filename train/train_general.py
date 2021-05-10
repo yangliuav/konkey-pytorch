@@ -1,7 +1,7 @@
 import os
 import argparse
 import json
-import comet_ml
+# import comet_ml
 from hyperpyyaml import load_hyperpyyaml
 
 import torch
@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
- 
+
 from engine.optimizers import make_optimizer
 from engine.system import System
 from engine.schedulers import DPTNetScheduler 
@@ -110,7 +110,7 @@ def create_experiment_directory(
         # wait for main_process if ddp is used
         sb.utils.distributed.ddp_barrier()
 
-def dynamic_mix(file1, file2)
+def dynamic_mix(file1, file2):
     audio1, fs = torchaudio.load(file1)
     audio2, fs = torchaudio.load(file2)
 
@@ -353,7 +353,7 @@ def parse_arguments(arg_list):
 
     parser = argparse.ArgumentParser(description = "Run a experiment")
     
-    parser.add_argument("param_file", type = str, help = help="A yaml-formatted file using the extended YAML syntax defined by SpeechBrain")
+    parser.add_argument("param_file", type = str, help="A yaml-formatted file using the extended YAML syntax defined by SpeechBrain")
     
     parser.add_argument("--debug", default=False, action ="store_true", help = "Run the experiment with only a few batches for all datasets, to ensure code runs without crashing.")
 
@@ -380,7 +380,7 @@ def parse_arguments(arg_list):
 
     known_args = parser.parse_known_args()[0]
     if known_args.debug == True:
-        parser.add_argument("--debug_batches", type=int, default=2 help="Number of batches to run in debug mode.")
+        parser.add_argument("--debug_batches", type=int, default=2, help="Number of batches to run in debug mode.")
         parser.add_argument("--debug_epochs", type=int, default=2,
         help="Number of epochs to run in debug mode. If a non-positive number is passed, all epochs are run.")
 
@@ -518,9 +518,10 @@ def trainer(conf):
     
 
 # https://colab.research.google.com/github/wandb/examples/blob/master/colabs/pytorch-lightning/Supercharge_your_Training_with_Pytorch_Lightning_%2B_Weights_%26_Biases.ipynb#scrollTo=A-N4UcuSD6Tx
+if __name__ == "__main__":
+    # pl.seed_everything(100)
+    sys.argv[1:] = ['hyperparams.yaml', '--device', 'cuda:1', '--seed', '10']
+    hparams_file, run_opts, overrides, hparams = parse_arguments(sys.argv[1:])
 
-pl.seed_everything(100)
-hparams_file, run_opts, overrides, hparams = parse_arguments(sys.argv[1:)
-
-create_experiment_directory(experiment_directory=hparams["output_folder"], hyperparams_to_save=hparams_file, overrides=overrides)
+    create_experiment_directory(experiment_directory=hparams["output_folder"], hyperparams_to_save=hparams_file, overrides=overrides)
 
